@@ -1,0 +1,359 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>BG Remover — Free Forever</title>
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700;900&display=swap" rel="stylesheet"/>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #0a0a0a;
+    --surface: #141414;
+    --border: rgba(255,255,255,0.08);
+    --accent: #00e5ff;
+    --accent2: #7b2fff;
+    --text: #f5f5f5;
+    --muted: #666;
+    --green: #00e676;
+    --amber: #ffab00;
+    --red: #ff5252;
+  }
+
+  body {
+    font-family: 'Outfit', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 40px 16px 80px;
+  }
+
+  body::before {
+    content: '';
+    position: fixed; inset: 0;
+    background-image:
+      linear-gradient(rgba(255,255,255,0.018) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(255,255,255,0.018) 1px, transparent 1px);
+    background-size: 40px 40px;
+    pointer-events: none; z-index: 0;
+  }
+
+  body::after {
+    content: '';
+    position: fixed;
+    width: 700px; height: 500px;
+    top: -200px; left: 50%; transform: translateX(-50%);
+    background: radial-gradient(ellipse, rgba(0,229,255,0.06) 0%, rgba(123,47,255,0.04) 40%, transparent 70%);
+    pointer-events: none; z-index: 0;
+  }
+
+  .wrap { width: 100%; max-width: 580px; position: relative; z-index: 1; }
+
+  header { text-align: center; margin-bottom: 36px; }
+
+  .tag {
+    display: inline-flex; align-items: center; gap: 8px;
+    border: 1px solid rgba(0,229,255,0.25);
+    background: rgba(0,229,255,0.06);
+    border-radius: 6px; padding: 5px 12px;
+    font-size: 0.65rem; font-weight: 600;
+    letter-spacing: 0.14em; text-transform: uppercase;
+    color: var(--accent); margin-bottom: 20px;
+  }
+  .tag-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--green); box-shadow: 0 0 8px var(--green); }
+
+  h1 { font-size: clamp(2rem, 6vw, 3.2rem); font-weight: 900; letter-spacing: -0.04em; line-height: 1; margin-bottom: 14px; }
+  h1 span { background: linear-gradient(90deg, var(--accent), var(--accent2)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+  .sub { color: var(--muted); font-size: 0.9rem; font-weight: 300; line-height: 1.6; }
+
+  .card { background: var(--surface); border: 1px solid var(--border); border-radius: 16px; overflow: hidden; }
+
+  .sbar { display: flex; align-items: center; gap: 10px; padding: 12px 20px; border-bottom: 1px solid var(--border); font-size: 0.75rem; }
+
+  .sdot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
+  .sdot.loading { background: var(--amber); box-shadow: 0 0 6px var(--amber); animation: pulse 1s ease-in-out infinite; }
+  .sdot.ready   { background: var(--green); box-shadow: 0 0 6px var(--green); }
+  .sdot.working { background: var(--accent); box-shadow: 0 0 8px var(--accent); animation: pulse 0.8s infinite; }
+  .sdot.error   { background: var(--red); box-shadow: 0 0 6px var(--red); }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.3} }
+
+  #stext { flex: 1; color: var(--muted); transition: color 0.3s; }
+  #stext.ready   { color: var(--green); font-weight: 600; }
+  #stext.working { color: var(--accent); font-weight: 500; }
+  #stext.error   { color: var(--red); }
+
+  .stag { font-size: 0.62rem; font-family: monospace; color: rgba(255,255,255,0.15); padding: 2px 8px; border: 1px solid rgba(255,255,255,0.08); border-radius: 4px; }
+
+  .pbar { height: 2px; background: rgba(255,255,255,0.05); display: none; }
+  .pfill { height: 100%; background: linear-gradient(90deg, var(--accent2), var(--accent)); width: 0%; transition: width 0.5s ease; }
+
+  .dz { margin: 20px; border: 1.5px dashed rgba(255,255,255,0.1); border-radius: 12px; padding: 50px 20px; text-align: center; cursor: pointer; transition: all 0.2s; }
+  .dz.disabled { opacity: 0.35; pointer-events: none; }
+  .dz:hover, .dz.drag { border-color: var(--accent); border-style: solid; background: rgba(0,229,255,0.03); }
+
+  .dz-icon { width: 56px; height: 56px; border: 1px solid rgba(0,229,255,0.2); border-radius: 14px; display: inline-flex; align-items: center; justify-content: center; margin-bottom: 16px; transition: all 0.2s; background: rgba(0,229,255,0.05); }
+  .dz:hover .dz-icon { border-color: var(--accent); transform: translateY(-3px); }
+
+  .dz h3 { font-size: 1rem; font-weight: 700; margin-bottom: 6px; letter-spacing: -0.01em; }
+  .dz p  { font-size: 0.8rem; color: var(--muted); }
+  .dz .formats { margin-top: 12px; font-size: 0.65rem; color: rgba(255,255,255,0.2); letter-spacing: 0.05em; }
+  input[type="file"] { display: none; }
+
+  .proc { display: none; margin: 0 20px 20px; padding: 28px 20px; border: 1px solid rgba(0,229,255,0.12); border-radius: 12px; background: rgba(0,229,255,0.03); text-align: center; }
+  .ring { width: 48px; height: 48px; border-radius: 50%; border: 2px solid rgba(0,229,255,0.15); border-top-color: var(--accent); border-right-color: var(--accent2); animation: spin 0.7s linear infinite; margin: 0 auto 16px; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .proc-t { font-weight: 700; font-size: 0.92rem; color: var(--accent); margin-bottom: 5px; }
+  .proc-s { font-size: 0.76rem; color: var(--muted); }
+
+  .errbox { display: none; margin: 0 20px 20px; padding: 12px 16px; border: 1px solid rgba(255,82,82,0.25); border-radius: 10px; background: rgba(255,82,82,0.06); font-size: 0.8rem; color: #ff8a80; line-height: 1.5; }
+
+  .result { display: none; margin: 0 20px 20px; }
+  .result-lbl { font-size: 0.65rem; font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted); margin-bottom: 10px; }
+
+  .checker {
+    border-radius: 12px; overflow: hidden;
+    background-color: #111;
+    background-image: linear-gradient(45deg, #1c1c1c 25%, transparent 25%), linear-gradient(-45deg, #1c1c1c 25%, transparent 25%), linear-gradient(45deg, transparent 75%, #1c1c1c 75%), linear-gradient(-45deg, transparent 75%, #1c1c1c 75%);
+    background-size: 18px 18px;
+    background-position: 0 0, 0 9px, 9px -9px, -9px 0px;
+    line-height: 0;
+  }
+  #out-img { width: 100%; height: auto; display: block; border-radius: 12px; }
+
+  .actions { display: flex; gap: 10px; margin-top: 12px; }
+  .btn { flex: 1; padding: 12px 16px; border-radius: 10px; font-family: 'Outfit', sans-serif; font-size: 0.85rem; font-weight: 700; letter-spacing: -0.01em; cursor: pointer; border: none; display: inline-flex; align-items: center; justify-content: center; gap: 7px; text-decoration: none; transition: all 0.18s; }
+  .btn-dl { background: linear-gradient(135deg, var(--accent2), var(--accent)); color: #000; }
+  .btn-dl:hover { transform: translateY(-2px); filter: brightness(1.1); }
+  .btn-new { background: rgba(255,255,255,0.06); color: var(--text); border: 1px solid var(--border); }
+  .btn-new:hover { background: rgba(255,255,255,0.1); }
+
+  footer { margin-top: 24px; text-align: center; font-size: 0.68rem; color: rgba(255,255,255,0.2); line-height: 1.8; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="tag"><span class="tag-dot"></span>Free · Unlimited · Private</div>
+    <h1>Remove<br><span>Any Background</span></h1>
+    <p class="sub">AI runs entirely in your browser.<br>No uploads, no accounts, no limits. Ever.</p>
+  </header>
+
+  <div class="card">
+    <div class="sbar">
+      <div class="sdot loading" id="sdot"></div>
+      <span id="stext">Loading AI — first visit downloads ~45MB, cached forever after…</span>
+      <span class="stag">RMBG-1.4</span>
+    </div>
+    <div class="pbar" id="pbar"><div class="pfill" id="pfill"></div></div>
+
+    <div class="dz disabled" id="dz">
+      <div class="dz-icon">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+          <polyline points="16 16 12 12 8 16"/><line x1="12" y1="12" x2="12" y2="21"/>
+          <path d="M20.39 18.39A5 5 0 0018 9h-1.26A8 8 0 103 16.3"/>
+        </svg>
+      </div>
+      <h3>Drop image here</h3>
+      <p>or click to choose a file</p>
+      <p class="formats">JPG · PNG · WEBP · Any subject, any background</p>
+      <input type="file" id="fi" accept="image/*"/>
+    </div>
+
+    <div class="proc" id="proc">
+      <div class="ring"></div>
+      <div class="proc-t" id="pt">Analysing image…</div>
+      <div class="proc-s" id="ps">Stays entirely on your device</div>
+    </div>
+
+    <div class="errbox" id="errbox"></div>
+
+    <div class="result" id="result">
+      <div class="result-lbl">Result — transparent PNG</div>
+      <div class="checker"><img id="out-img" src="" alt="Background removed"/></div>
+      <div class="actions">
+        <a class="btn btn-dl" id="dlbtn" href="#" download="removed-bg.png">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          Download PNG
+        </a>
+        <button class="btn btn-new" onclick="resetUI()">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 101.85-9.01L1 10"/></svg>
+          New Image
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <footer>Powered by <strong>BRIA RMBG-1.4</strong> via Transformers.js · Your images never leave this device</footer>
+</div>
+
+<script type="module">
+  import { AutoModel, AutoProcessor, RawImage }
+    from 'https://cdn.jsdelivr.net/npm/@huggingface/transformers@3.4.1/dist/transformers.min.js';
+
+  const sdot   = document.getElementById('sdot');
+  const stext  = document.getElementById('stext');
+  const pbar   = document.getElementById('pbar');
+  const pfill  = document.getElementById('pfill');
+  const dz     = document.getElementById('dz');
+  const fi     = document.getElementById('fi');
+  const proc   = document.getElementById('proc');
+  const pt     = document.getElementById('pt');
+  const ps     = document.getElementById('ps');
+  const errbox = document.getElementById('errbox');
+  const result = document.getElementById('result');
+  const outImg = document.getElementById('out-img');
+  const dlbtn  = document.getElementById('dlbtn');
+
+  let model, processor;
+
+  function setStatus(state, msg) {
+    sdot.className = 'sdot ' + state;
+    stext.className = ['ready','working','error'].includes(state) ? state : '';
+    stext.textContent = msg;
+  }
+
+  function setProgress(pct) {
+    pbar.style.display = 'block';
+    pfill.style.width = pct + '%';
+    if (pct >= 100) setTimeout(() => pbar.style.display = 'none', 700);
+  }
+
+  function showErr(msg) {
+    errbox.style.display = msg ? 'block' : 'none';
+    errbox.textContent = msg;
+  }
+
+  async function loadModel() {
+    setStatus('loading', 'Loading AI model — cached after first visit (~45MB)…');
+    setProgress(5);
+
+    try {
+      // Processor config: exact values required for RMBG-1.4
+      processor = await AutoProcessor.from_pretrained('briaai/RMBG-1.4', {
+        config: {
+          do_normalize: true,
+          do_pad: false,
+          do_rescale: true,
+          do_resize: true,
+          image_mean: [0.5, 0.5, 0.5],
+          image_std:  [1, 1, 1],
+          resample: 2,
+          rescale_factor: 0.00392156862745098,
+          size: { width: 1024, height: 1024 },
+          feature_extractor_type: 'ImageFeatureExtractor',
+        },
+      });
+      setProgress(45);
+
+      // Model: quantized:false = much better edge quality (larger file but worth it)
+      model = await AutoModel.from_pretrained('briaai/RMBG-1.4', {
+        config: { model_type: 'custom' },
+        quantized: false,
+      });
+      setProgress(100);
+
+      setStatus('ready', '✓ AI ready — drop any image to start');
+      dz.classList.remove('disabled');
+
+    } catch (e) {
+      console.error(e);
+      pbar.style.display = 'none';
+      setStatus('error', 'Failed to load model — check your connection and refresh');
+    }
+  }
+
+  dz.addEventListener('click', () => fi.click());
+  fi.addEventListener('change', e => { if (e.target.files[0]) run(e.target.files[0]); });
+  dz.addEventListener('dragover', e => { e.preventDefault(); dz.classList.add('drag'); });
+  dz.addEventListener('dragleave', () => dz.classList.remove('drag'));
+  dz.addEventListener('drop', e => {
+    e.preventDefault(); dz.classList.remove('drag');
+    const f = e.dataTransfer.files[0];
+    if (f?.type.startsWith('image/')) run(f);
+  });
+
+  async function run(file) {
+    showErr('');
+    dz.style.display = 'none';
+    result.style.display = 'none';
+    proc.style.display = 'block';
+    setStatus('working', 'Processing image…');
+
+    try {
+      pt.textContent = 'Reading image…';
+      ps.textContent = 'All processing stays on your device';
+
+      const blobUrl = URL.createObjectURL(file);
+      const image = await RawImage.fromURL(blobUrl);
+      URL.revokeObjectURL(blobUrl);
+
+      pt.textContent = 'Running AI segmentation…';
+      ps.textContent = 'Takes 5–30 seconds depending on your device';
+
+      // Run through model
+      const { pixel_values } = await processor(image);
+      const { output } = await model({ input: pixel_values });
+
+      pt.textContent = 'Compositing result…';
+
+      // output[0]: tensor [1, 1, 1024, 1024]
+      // squeeze → [1024, 1024], multiply 255, cast uint8
+      const maskTensor = output[0].squeeze().mul(255).to('uint8');
+      const maskImage  = await RawImage.fromTensor(maskTensor);
+
+      // Resize mask to original image size
+      const resizedMask = await maskImage.resize(image.width, image.height);
+
+      // Draw original image on canvas, apply mask as alpha channel
+      const canvas = new OffscreenCanvas(image.width, image.height);
+      const ctx    = canvas.getContext('2d');
+
+      const origBitmap = await createImageBitmap(file);
+      ctx.drawImage(origBitmap, 0, 0);
+
+      const imgData = ctx.getImageData(0, 0, image.width, image.height);
+      const pixels  = imgData.data;           // RGBA flat array
+      const mask    = resizedMask.data;        // single-channel grayscale
+      const ch      = resizedMask.channels;    // 1 for grayscale
+
+      for (let i = 0; i < image.width * image.height; i++) {
+        pixels[i * 4 + 3] = mask[i * ch];     // set alpha from mask
+      }
+      ctx.putImageData(imgData, 0, 0);
+
+      const blob      = await canvas.convertToBlob({ type: 'image/png' });
+      const resultUrl = URL.createObjectURL(blob);
+
+      proc.style.display   = 'none';
+      outImg.src           = resultUrl;
+      dlbtn.href           = resultUrl;
+      dlbtn.download       = file.name.replace(/\.[^.]+$/, '') + '_nobg.png';
+      result.style.display = 'block';
+      setStatus('ready', '✓ Done — drop another image anytime');
+
+    } catch (e) {
+      console.error(e);
+      proc.style.display = 'none';
+      dz.style.display   = 'block';
+      setStatus('ready', 'Error — try a different image or refresh');
+      showErr('Error: ' + (e.message || String(e)));
+    }
+  }
+
+  window.resetUI = () => {
+    result.style.display = 'none';
+    proc.style.display   = 'none';
+    dz.style.display     = 'block';
+    fi.value = '';
+    showErr('');
+    setStatus('ready', '✓ AI ready — drop any image to start');
+  };
+
+  loadModel();
+</script>
+</body>
+</html>
